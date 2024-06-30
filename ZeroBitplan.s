@@ -28,6 +28,7 @@
  opt o+,w+
 
 
+; MARK: Macros
 ;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ;% Macro qui fait une attente soit avec une succession de NOPs %
 ;% (FAST=1), soit en optimisant avec des instructions neutres  %
@@ -53,7 +54,7 @@ t1 set (\1-t6*6-t5*5-t4*4-t3*3-t2*2)
   
 
 ; ------------------
-;   Program start
+;  MARK: Program start
 ; ------------------
 ProgStart 
  	; We call the main routine in supervisor mode
@@ -69,7 +70,7 @@ ProgStart
 
 super_main
  	;
-	; Save context
+	;  MARK: Save context 
 	;
 	move.w #$2700,sr
 	move.b $fffffa07.w,save_iera
@@ -110,7 +111,7 @@ super_main
 	bne.s .loop
 
 	;
-	; Restore system
+	; MARK:Restore system
 	;
  	move.w #$2700,sr
 
@@ -133,7 +134,7 @@ super_main
  
 
 
-
+; MARK: VBL
 VblFlipFlop
 	movem.l d0-d7/a0-a6,-(sp)
 
@@ -165,14 +166,14 @@ VblFlipFlop
 	sub.b d0,d2
 	lsl.b d2,d0
 
-	;bsr MindBender
-	bsr MonoSlide
+	bsr MindBender
+	;bsr MonoSlide
 
 	movem.l (sp)+,d0-d7/a0-a6
 VblDoNothing
 	rte
 
-
+; MARK: YM Update
 UpdateYM
 	rts ; no sound at the moment
 	; Do some weird noise with the YM using the current shift registers
@@ -185,9 +186,7 @@ UpdateYM
 	rts
 
 
-ShiftCounter    dc.w 50
-ShiftPosition 	dc.w 0
-
+; MARK: MonoSlide
 MonoSlide
 	move.l #$0000FFFF,d6   ; Color of tile
 	
@@ -277,42 +276,89 @@ DrawBlackAndWhiteTiles
 
 
 
-
+; MARK: MindBender
 MindBender
-	; 366*3=1098
-	; 274*4=1098
-
-	; To leave room for the "Dbug" line
-	; 64 nops*8 = 
-	;move.w #138-1,d0
-	move.w #157-1,d0
-.delay
-	subq.w #1,8(a6)
-	dbra d0,.delay    ; 3
+ 	move.w #$370,d6        ; Color of first tile
+ 	move.w #$263,d7        ; Color of second tile
 
 	; The alternated color grid
-	moveq #7-1,d1 
-.loop_lines
-	; 247
-	move.w #242-1,d0
-.loop_squares
-	move.w d6,(a6)                ; 8/2   background color change
-
-	lsl.l #8,d3        		   	  ; 24/6 (DELAY)
-
-	move.w d7,(a6)                ; 8/2    background color change
-
-	move.w (a6),(a6) ;pause 3     ; (DELAY)
-
-	dbra d0,.loop_squares          ; 12/3 if branches / 16/4 if not taken
-
-	;pause 2                      ; (DELAY)
+	pause 64+20
+	bsr DrawGradientColorTilesFlip
 	addq #1,d6
-	;addq #1,d7
-	nop
+	bsr DrawGradientColorTilesFlop
+	addq #1,d6
+	bsr DrawGradientColorTilesFlip
+	addq #1,d6
+	bsr DrawGradientColorTilesFlop
+	addq #1,d6
+	bsr DrawGradientColorTilesFlip
+	addq #1,d6
+	bsr DrawGradientColorTilesFlop
+	addq #1,d6
+	bsr DrawGradientColorTilesFlip
+	addq #1,d6
 
-	dbra d1,.loop_lines 
+	move.w #$000,(a6)              ; Black at the end
+
 	rts
+
+
+DrawGradientColorTilesFlip
+	; 31 lines of alternative black and white squares
+	moveq #31-1,d2
+.loop_squares
+	pause 5
+	REPT 7
+	move.w d6,(a6)                ;    8/2   background color change
+	pause 6
+	move.w d7,(a6)                ;    8/2   background color change
+	pause 6
+	ENDR                          ; = 32/8
+	pause 5
+	move.w #$700,(a6)
+	dbra d2,.loop_squares          ; 12/3 if branches / 16/4 if not taken
+
+	; One last line
+	pause 4
+	REPT 7
+	move.w d6,(a6)                ;    8/2   background color change
+	pause 6
+	move.w d7,(a6)                ;    8/2   background color change
+	pause 6
+	ENDR                          ; = 32/8
+	rts             ; 16/4
+
+DrawGradientColorTilesFlop
+	; 31 lines of alternative black and white squares
+	moveq #32-1,d2
+.loop_squares
+	pause 5
+	REPT 7
+	move.w d7,(a6)                ;    8/2   background color change
+	pause 6
+	move.w d6,(a6)                ;    8/2   background color change
+	pause 6
+	ENDR                          ; = 32/8
+	pause 5
+	move.w #$700,(a6)
+	dbra d2,.loop_squares          ; 12/3 if branches / 16/4 if not taken
+
+	; One last line
+	pause 4
+	REPT 7
+	move.w d7,(a6)                ;    8/2   background color change
+	pause 6
+	move.w d6,(a6)                ;    8/2   background color change
+	pause 6
+	ENDR                          ; = 32/8
+	rts             ; 16/4
+
+
+; MARK: DATA SECTION
+	SECTION DATA
+
+ShiftCounter    dc.w 50
+ShiftPosition 	dc.w 0
 
 
 YmData
@@ -334,7 +380,8 @@ YmDataAVolume
  dc.b 15             ; Channel A volume
 
 
-	SECTION BSS
+; MARK: BSS SECTION
+	SECTION BSS    
 
 save_70      		ds.l 1	; VBL handler
 
@@ -349,7 +396,7 @@ save_screen_addr_2 	ds.b 1
 	even
 
 
-Whatever	 ds.l 1
+Whatever	 		ds.l 1
 screen_buffer       ds.l (256+32000)/4
 
 
