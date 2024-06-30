@@ -166,7 +166,8 @@ VblFlipFlop
 	sub.b d0,d2
 	lsl.b d2,d0
 
-	bsr MindBender
+	bsr SurpriseBomb
+	;bsr MindBender
 	;bsr MonoSlide
 
 	movem.l (sp)+,d0-d7/a0-a6
@@ -385,8 +386,50 @@ DrawGradientColorTilesFlop
 	rts             ; 16/4
 
 
+; MARK: Surprise
+;
+; move.w #$xxx,(a6)   ; 12   512/12 = 42.666 blocs
+; move.w (a0)+,(a6)   ; 12 
+; move.w dn,(a6)      ; 8    512/8 = 64 blocs
+SurpriseBomb
+	pause 64+20+10+8 ;-39
+
+ 	lea DbugSurprise80x80+160*20+2*20,a0
+	REPT 30	
+
+	; First lines
+	REPT 7
+	move.l a0,a1       ; 4/1
+	move.w #$770,(a6)  ; 12/3
+	REPT 40
+	move.w (a1)+,(a6)  ; 12/3
+	ENDR               ; 40*3=120
+	pause 4
+	ENDR
+
+	; Skip to next line
+	move.l a0,a1       ; 4/1
+	move.w #$770,(a6)  ; 12/3
+	REPT 40
+	move.w (a1)+,(a6)  ; 12/3
+	ENDR               ; 40*3=120
+	pause 4-2
+	lea 80*2(a0),a0    ; 16/4
+
+	ENDR
+
+ 
+	move.w #0,(a6)   ; Final black marker
+	rts
+
+
 ; MARK: DATA SECTION
 	SECTION DATA
+
+DbugSurprise80x80
+	incbin "surprise.bin"
+
+	even
 
 ShiftCounter    dc.w 50
 ShiftPosition 	dc.w 0
