@@ -278,6 +278,7 @@ DrawBlackAndWhiteTiles
 
 ; MARK: MindBender
 MindBender
+	move.w #$703,d5        ; Color of the marker
  	move.w #$370,d6        ; Color of first tile
  	move.w #$263,d7        ; Color of second tile
 
@@ -296,6 +297,8 @@ MindBender
 	bsr DrawGradientColorTilesFlop
 	addq #1,d6
 	bsr DrawGradientColorTilesFlip
+	addq #1,d6
+	bsr DrawGradientColorTilesFlop
 	addq #1,d6
 
 	move.w #$000,(a6)              ; Black at the end
@@ -319,13 +322,16 @@ DrawGradientColorTilesFlip
 	dbra d2,.loop_squares          ; 12/3 if branches / 16/4 if not taken
 
 	; One last line
-	pause 4
+	pause 4-1
 	REPT 7
+	move.w d5,(a6)
 	move.w d6,(a6)                ;    8/2   background color change
-	pause 6
+	pause 6-2
+	move.w d5,(a6)
 	move.w d7,(a6)                ;    8/2   background color change
-	pause 6
+	pause 6-2
 	ENDR                          ; = 32/8
+	pause 1                     
 	rts             ; 16/4
 
 DrawGradientColorTilesFlop
@@ -344,13 +350,16 @@ DrawGradientColorTilesFlop
 	dbra d2,.loop_squares          ; 12/3 if branches / 16/4 if not taken
 
 	; One last line
-	pause 4
+	pause 4-1
 	REPT 7
+	move.w d5,(a6)
 	move.w d7,(a6)                ;    8/2   background color change
-	pause 6
+	pause 6-2
+	move.w d5,(a6)
 	move.w d6,(a6)                ;    8/2   background color change
-	pause 6
+	pause 6-2
 	ENDR                          ; = 32/8
+	pause 1
 	rts             ; 16/4
 
 
