@@ -174,6 +174,7 @@ VblDoNothing
 
 
 UpdateYM
+	rts ; no sound at the moment
 	; Do some weird noise with the YM using the current shift registers
 	lea YmData(pc),a0
 	moveq #5-1,d0
@@ -196,7 +197,7 @@ MonoSlide
 	sub.l d1,d2
 
 	; Complete the top black line (+ offset to show the start)
-	pause 45-10
+	pause 25
 
 	; The alternated color grid
 	; d0 - trash register used by the "pause" macro and the various delays
@@ -228,9 +229,18 @@ MonoSlide
 	nop
 	bsr DrawBlackAndWhiteTiles
 	nop
-
+	bsr DrawLastSeparatorLine
 	rts
 
+
+DrawLastSeparatorLine
+	; Intermediate line
+	pause 64-6-1-4-3
+	move.w #$333,(a6)             ; 12/3
+	pause 128-3
+	move.w #$000,(a6)             ; 12/3
+	pause 114
+	rts
 
 DrawBlackAndWhiteTiles
 	; Intermediate line
