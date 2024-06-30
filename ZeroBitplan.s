@@ -283,7 +283,7 @@ MindBender
  	move.w #$263,d7        ; Color of second tile
 
 	; The alternated color grid
-	pause 64+20
+	pause 64+20 ;-39
 	bsr DrawGradientColorTilesFlip
 	addq #1,d6
 	bsr DrawGradientColorTilesFlop
@@ -307,8 +307,19 @@ MindBender
 
 
 DrawGradientColorTilesFlip
-	; 31 lines of alternative black and white squares
-	moveq #31-1,d2
+	; Top line with the red marker
+	REPT 7
+	move.w d5,(a6)
+	move.w d6,(a6)                ;    8/2   background color change
+	pause 6-2
+	move.w d5,(a6)
+	move.w d7,(a6)                ;    8/2   background color change
+	pause 6-2
+	ENDR                          ; = 32/8
+	pause 8
+	move.w #$700,(a6)
+
+	moveq #30-1,d2
 .loop_squares
 	pause 5
 	REPT 7
@@ -321,7 +332,7 @@ DrawGradientColorTilesFlip
 	move.w #$700,(a6)
 	dbra d2,.loop_squares          ; 12/3 if branches / 16/4 if not taken
 
-	; One last line
+	; One last line with the red marker
 	pause 4-1
 	REPT 7
 	move.w d5,(a6)
@@ -331,12 +342,23 @@ DrawGradientColorTilesFlip
 	move.w d7,(a6)                ;    8/2   background color change
 	pause 6-2
 	ENDR                          ; = 32/8
-	pause 1                     
+	pause 6
 	rts             ; 16/4
 
 DrawGradientColorTilesFlop
-	; 31 lines of alternative black and white squares
-	moveq #32-1,d2
+	; Top line with the red marker
+	REPT 7
+	move.w d5,(a6)
+	move.w d7,(a6)                ;    8/2   background color change
+	pause 6-2
+	move.w d5,(a6)
+	move.w d6,(a6)                ;    8/2   background color change
+	pause 6-2
+	ENDR                          ; = 32/8
+	pause 8
+	move.w #$700,(a6)
+
+	moveq #30-1,d2
 .loop_squares
 	pause 5
 	REPT 7
@@ -349,7 +371,7 @@ DrawGradientColorTilesFlop
 	move.w #$700,(a6)
 	dbra d2,.loop_squares          ; 12/3 if branches / 16/4 if not taken
 
-	; One last line
+	; One last line with the red marker
 	pause 4-1
 	REPT 7
 	move.w d5,(a6)
@@ -359,7 +381,7 @@ DrawGradientColorTilesFlop
 	move.w d6,(a6)                ;    8/2   background color change
 	pause 6-2
 	ENDR                          ; = 32/8
-	pause 1
+	pause 6
 	rts             ; 16/4
 
 
