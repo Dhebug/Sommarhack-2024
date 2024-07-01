@@ -24,8 +24,13 @@
 ; MindBender (2020): https://demozoo.org/productions/280163/
 ; MonoSlide (2022):  https://demozoo.org/productions/310182/
 ;
+; Credits:
+; - Top Border synchronisation code by Zerkman / Sector One
+; - Effects by Dbug
+; - Music by someone else
+;
 
- opt o+,w+
+
 
 
 ; MARK: Macros
@@ -66,82 +71,246 @@ ProgStart
 
 	clr.w -(sp)               ; GEMDOS: PTERM(0)
 	trap #1
- 	
 
 super_main
- 	;
-	;  MARK: Save context 
-	;
-	move.w #$2700,sr
-	move.b $fffffa07.w,save_iera
-	sf $fffffa07.w					; iera
+	move.l sp,usp
+	bsr SaveSettings
+	bsr Initialization
+.loop_forever
+	bra.s	.loop_forever		; infinite wait loop
 
-	move.b $fffffa09.w,save_ierb
-	sf $fffffa09.w					; ierb
 
-	move.b $ffff8260.w,save_resol
+exit
+	move	#$2700,sr
+	move.l	usp,sp
+	bsr RestoreSettings
+	move	#$2300,sr
+	rts
 
- 	move.b $ffff8201.w,save_screen_addr_1	; Screen base pointeur (STF/E)
- 	move.b $ffff8203.w,save_screen_addr_2	; Screen base pointeur (STF/E)
+SaveSettings
+	lea settings,a0
+	move.l	$ffff8200.w,(a0)+
+	move.b	$ffff820a.w,(a0)+
+	move.b	$ffff8260.w,(a0)+
+	move.l	$68.w,(a0)+
+	move.l	$70.w,(a0)+
+	move.l	$120.w,(a0)+
+	move.l	$134.w,(a0)+
+	move.b	$fffffa07.w,(a0)+
+	move.b	$fffffa09.w,(a0)+
+	movem.l $ffff8240.w,d1-d7/a1
+	movem.l d1-d7/a1,(a0)
+	rts
 
-	move.w $ffff8240.w,save_background
 
- 	move.l $70.w,save_70					          ; Save original VBL handler
- 	move.l #VblDoNothing,$70.w
-	move.w #$2300,sr
+RestoreSettings
+	lea settings,a0
+	move.l	(a0)+,$ffff8200.w
+	move.b	(a0)+,$ffff820a.w
+	move.b	(a0)+,$ffff8260.w
+	move.l	(a0)+,$68.w
+	move.l	(a0)+,$70.w
+	move.l	(a0)+,$120.w
+	move.l	(a0)+,$134.w
+	move.b	(a0)+,$fffffa07.w
+	move.b	(a0)+,$fffffa09.w
+	movem.l (a0)+,d1-d7/a1
+	movem.l d1-d7/a1,$ffff8240.w
+	clr.b	$fffffa19.w
+	clr.b	$ffff820a.w
 
-	;
-	; Set the screen at the right adress
-	;
+	jsr Music+4             ; Stop music
+	jsr YmSilent
+	rts
+
+
+SetScreen
 	lea $ffff8201.w,a0               	; Screen base pointeur (STF/E)
 	move.l #screen_buffer+256,d0
 	clr.b d0
 	lsr.l #8,d0					        ; Allign adress on a byte boudary for STF compatibility
 	movep.w d0,0(a0) 
 	sf.b 12(a0)					        ; For STE low byte to 0
-
-
-	;
-	; Main loop
-	;
-	move.l #VblFlipFlop,$70.w
-.loop
- 	; We do the key check before the synchronisation to avoid wobbly rasters
- 	cmp.b #$39,$fffffc02.w
-	bne.s .loop
-
-	;
-	; MARK:Restore system
-	;
- 	move.w #$2700,sr
-
-	move.b #0,YmDataAVolume
-	bsr UpdateYM
-
- 	move.l save_70,$70.w
-
-	move.b save_iera,$fffffa07.w
-	move.b save_ierb,$fffffa09.w
-	move.b save_resol,$ffff8260.w
-
- 	move.b save_screen_addr_1,$ffff8201.w
- 	move.b save_screen_addr_2,$ffff8203.w
-
-	move.w save_background,$ffff8240.w
-
-	move.w #$2300,sr
 	rts
- 
 
 
-; MARK: VBL
-VblFlipFlop
+YmSilent
+	move.b #8,$ffff8800.w		; Volume register 0
+	move.b #0,$ffff8802.w      	; Null volume
+	move.b #9,$ffff8800.w		; Volume register 1
+	move.b #0,$ffff8802.w      	; Null volume
+	move.b #10,$ffff8800.w		; Volume register 2
+	move.b #0,$ffff8802.w      	; Null volume
+	rts
+
+
+Initialization
+	bsr SetScreen
+	
+	moveq #1,d0             ; Subtune number
+	jsr Music+0             ; Init music
+
+	clr.b	$fffffa07.w		; iera
+	clr.b	$fffffa09.w		; ierb
+
+	bset	#5,$fffffa07.w	; activate timer A
+	bset	#5,$fffffa13.w	; unmask timer A
+	bset	#0,$fffffa07.w	; activate timer B
+	bset	#0,$fffffa13.w	; unmask timer B
+
+	clr.b	$fffffa19.w		; timer A - stop
+	clr.b	$fffffa1b.w		; timer B - stop
+	lea	timer_a_cfg(pc),a0
+	move.l	a0,$134.w
+	lea	timer_b(pc),a0
+	move.l	a0,$120.w
+
+	lea	hbl(pc),a0
+	move.l	a0,$68.w
+	lea	vbl(pc),a0
+	move.l	a0,$70.w
+
+	moveq	#0,d0
+	lea	$ffff820a.w,a0
+	lea	$ffff8260.w,a1
+	stop	#$2300
+	move.b	d0,(a1)
+	move	a0,(a0)
+	rts
+
+
+
+vbl:
+	clr.b	$fffffa19.w				; timer A - stop
+decale:	move.b	#$c2,$fffffa1f.w	; timer A - set counter
+	move.b	#4,$fffffa19.w			; timer A - delay mode,divide by 50
+	clr.b	$fffffa1b.w				; timer B - stop
+	move.b	#228,$fffffa21.w		; timer B - set counter
+	;move.b	#199,$fffffa21.w	; timer B - set counter
+	move.b	#8,$fffffa1b.w	; timer B - event count mode
+
+	cmp.b	#$39,$fffffc02.w
+	beq	exit
+	rte
+
+hbl:
+	rte
+
+; On first frame, record HBL delay for lines 62 to 66.
+; Since the delay is periodic every 5 lines, delay for lines 62-66
+; is the same as lines 32-36 and line 32 is that which we use for
+; synchronisation before we open the border between lines 32 and 33.
+timer_a_cfg:
+	clr.b	$fffffa19.w
+	bclr.b	#5,$fffffa0f.w
+	move	#$2300,sr
+
+	moveq	#0,d5
+	moveq	#12,d3
+	moveq	#4,d2
+	stop	#$2100
+tacglp:
+	stop	#$2100
+	moveq	#0,d4
+	move.b	$ffff8209.w,d4
+	sub.b	d3,d4
+	subq	#4,d4
+	neg	d4
+	add.b	#$a0,d3
+	lsr	#2,d5
+	lsl	#7,d4
+	or	d4,d5
+	dbra	d2,tacglp
+
+	lea	snval(pc),a2
+	move	d5,(a2)
+	lea	decale+3(pc),a2
+	move.b	#100,(a2)
+	lea	timer_a(pc),a2
+	move.l	a2,$134.w
+
+	bsr	nextshift
+
+	rte
+
+; Shift HBL sync delays so the next delay is the (nth+3) mod 5
+nextshift:
+	lea	snval(pc),a2
+	move	(a2),d2
+	moveq	#$3f,d3
+	and	d2,d3
+	lsl	#4,d3
+	lsr	#6,d2
+	or	d3,d2
+	move	d2,(a2)
+
+	rts
+
+timer_a:
+	clr.b	$fffffa19.w	; timer A - stop
+	bclr.b	#5,$fffffa0f.w
+	stop	#$2100
+	stop	#$2100
+	move	#$2300,sr
+
+; sync using the HBL delays table
+	moveq	#3,d0
+	and	snval(pc),d0
+	add	d0,d0
+	lsr	d0,d0
+
+ ifne 0
+	dcb.w	90,$4e71
+; Generic top border opening
+	move.b	d0,(a0)	; LineCycles=488
+	dcb.w	2,$4e71
+	move	a0,(a0)	; LineCycles=504 - L16:16
+ endc
+	bsr	nextshift
+
+	;bsr MonoSlide
+	;bsr SurpriseBomb
+	bsr MindBender
+
+	move.w #$700,$ffff8240.w
+	jsr Music+8             ; Play music
+	move.w #$333,$ffff8240.w
+
+
+	bclr.b	#5,$fffffa0f.w
+	rte
+
+timer_b:
+	clr.b	$fffffa1b.w	; timer B - stop
+	movem.l	d0-d1,-(sp)
+	move.b	$ffff8209.w,d0
+tbwbc:
+	move.b	$ffff8209.w,d1
+	cmp.b	d0,d1
+	beq.s	tbwbc
+	sub.b	d1,d0
+	lsr.l	d0,d0		; now we're on sync with display
+	rept	51
+	nop
+	endr
+	move.b	#44,$fffffa21.w	; timer B - set counter
+	move.b	#8,$fffffa1b.w	; timer B - event count mode
+	clr.b	$ffff820a.w
+	rept	6
+	nop
+	endr
+	move.b	#2,$ffff820a.w
+	movem.l	(sp)+,d0-d1
+	
+	bclr.b	#0,$fffffa0f.w
+	rte
+
+
+
+; MARK: MonoSlide
+MonoSlide
 	movem.l d0-d7/a0-a6,-(sp)
-
 	lea $ffff8240.w,a6
-
-	move.w #$0,(a6)          ; Black top background
-
 	lea Whatever,a0
 
 	move.w ShiftPosition,d0	
@@ -153,42 +322,6 @@ VblFlipFlop
 	move.w d0,ShiftPosition 
 .skip
 
-	; Do some weird noise with the YM using the current shift registers
-	move.b d0,YmDataAFrequency
-	move.b d0,YmDataNoiseFrequency
-	bsr UpdateYM
-
-	; Line zero synchronisation
-	moveq #14,d2
-.wait_sync
-	move.b $ffff8209.w,d0
-	beq.s .wait_sync
-	sub.b d0,d2
-	lsl.b d2,d0
-
-	bsr SurpriseBomb
-	;bsr MindBender
-	;bsr MonoSlide
-
-	movem.l (sp)+,d0-d7/a0-a6
-VblDoNothing
-	rte
-
-; MARK: YM Update
-UpdateYM
-	rts ; no sound at the moment
-	; Do some weird noise with the YM using the current shift registers
-	lea YmData(pc),a0
-	moveq #5-1,d0
-.loop_ym
-	move.b (a0)+,$ffff8800.w
-	move.b (a0)+,$ffff8802.w
-	dbra d0,.loop_ym 
-	rts
-
-
-; MARK: MonoSlide
-MonoSlide
 	move.l #$0000FFFF,d6   ; Color of tile
 	
 	moveq #0,d1
@@ -230,6 +363,8 @@ MonoSlide
 	bsr DrawBlackAndWhiteTiles
 	nop
 	bsr DrawLastSeparatorLine
+
+	movem.l (sp)+,d0-d7/a0-a6
 	rts
 
 
@@ -279,12 +414,16 @@ DrawBlackAndWhiteTiles
 
 ; MARK: MindBender
 MindBender
+	movem.l d0-d7/a0-a6,-(sp)
+	lea $ffff8240.w,a6
+	lea Whatever,a0
+
 	move.w #$703,d5        ; Color of the marker
  	move.w #$370,d6        ; Color of first tile
  	move.w #$263,d7        ; Color of second tile
 
 	; The alternated color grid
-	pause 64+20 ;-39
+	pause 64-20-10-8-2
 	bsr DrawGradientColorTilesFlip
 	addq #1,d6
 	bsr DrawGradientColorTilesFlop
@@ -304,6 +443,7 @@ MindBender
 
 	move.w #$000,(a6)              ; Black at the end
 
+	movem.l (sp)+,d0-d7/a0-a6
 	rts
 
 
@@ -392,10 +532,14 @@ DrawGradientColorTilesFlop
 ; move.w (a0)+,(a6)   ; 12 
 ; move.w dn,(a6)      ; 8    512/8 = 64 blocs
 SurpriseBomb
-	pause 64+20+10+8 ;-39
+	movem.l d0-d7/a0-a6,-(sp)
+	lea $ffff8240.w,a6
+	lea Whatever,a0
+
+	pause 64-20-10
 
  	lea DbugSurprise80x80+160*20+2*20,a0
-	REPT 30	
+	REPT 33
 
 	; First lines
 	REPT 7
@@ -420,14 +564,17 @@ SurpriseBomb
 
  
 	move.w #0,(a6)   ; Final black marker
+	movem.l (sp)+,d0-d7/a0-a6
 	rts
 
 
-; MARK: DATA SECTION
 	SECTION DATA
 
 DbugSurprise80x80
 	incbin "surprise.bin"
+
+Music
+	incbin "musics\SOS.SND"
 
 	even
 
@@ -435,44 +582,20 @@ ShiftCounter    dc.w 50
 ShiftPosition 	dc.w 0
 
 
-YmData
- dc.b 0
- dc.b 0                ; Channel A frequency (low byte)
-
- dc.b 1
-YmDataAFrequency
- dc.b 0                ; Channel A frequency (high byte)
-
- dc.b 6
-YmDataNoiseFrequency 
- dc.b 0                ; Noise generator frequency
-
- dc.b 7,%11110110      ; Enable Channel A tone and noise
-
- dc.b 8
-YmDataAVolume
- dc.b 15             ; Channel A volume
-
-
-; MARK: BSS SECTION
-	SECTION BSS    
-
-save_70      		ds.l 1	; VBL handler
-
-save_background     ds.w 1 
-
-save_iera			ds.b 1	; Interrupt enable register A
-save_ierb			ds.b 1	; Interrupt enable register B
-save_resol			ds.b 1	; Screen resolution
-save_screen_addr_1 	ds.b 1
-save_screen_addr_2 	ds.b 1
+	SECTION BSS
 
 	even
 
+bss_start:
+
+snval			ds.w	1
+settings        ds.b    256
+screen_buffer	ds.b	160*276+256
+
+	even
 
 Whatever	 		ds.l 1
-screen_buffer       ds.l (256+32000)/4
 
+	end
 
- end
-
+ 
