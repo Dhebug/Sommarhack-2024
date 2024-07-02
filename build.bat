@@ -8,6 +8,14 @@ for /F %%a in ('"prompt $E$S & echo on & for %%b in (1) do rem"') do set "ESC=%%
 
 echo %ESC%[1mBuild started: %date% %time%%ESC%[0m
 
+md export
+%osdk%\bin\PictConv.exe -m1 -f3 -o2 data\dbug_surprise.png export\surprise.bin
+%osdk%\bin\PictConv.exe -m1 -f3 -o2 data\top_banner.png export\top_banner.bin
+%osdk%\bin\PictConv.exe -m1 -f3 -o2 data\made_in_5_days.png export\made_in_5_days.bin
+%osdk%\bin\PictConv.exe -m1 -f3 -o2 data\credits.png export\credits.bin
+%osdk%\bin\PictConv.exe -m1 -f3 -o2 data\greetings.png export\greetings.bin
+%osdk%\bin\PictConv.exe -m1 -f3 -o2 data\title.png export\title.bin
+
 ::
 :: http://sun.hasenbraten.de/vasm/index.php?view=tutorial
 :: http://sun.hasenbraten.de/vasm/release/vasm.html
@@ -31,4 +39,5 @@ goto :End
 
 
 :End
+ECHO done
 

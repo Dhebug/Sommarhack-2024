@@ -30,7 +30,7 @@
 ; - Music by someone else
 ;
 
-enable_music  equ 0
+enable_music  equ 1
 
 
 ; MARK: Macros
@@ -200,7 +200,7 @@ decale:	move.b	#$c2,$fffffa1f.w	; timer A - set counter
 hbl:
 	rte
 
-snval			ds.w	1
+snval			dc.w	0
 
 ; On first frame, record HBL delay for lines 62 to 66.
 ; Since the delay is periodic every 5 lines, delay for lines 62-66
@@ -274,17 +274,27 @@ timer_a:
  endc
 	bsr	nextshift
 
+	;
+	; Demo part is here
+	;
+	movem.l d0-d7/a0-a6,-(sp)
+
+	lea $ffff8240.w,a6
+	lea Whatever,a0
+
 	bsr DefenceForceLogo
 _auto_jsr	
 	jsr DoNothing
 
  ifne enable_music
-	move.w #$700,$ffff8240.w
+	;move.w #$700,$ffff8240.w
 	jsr Music+8             ; Play music
-	move.w #$333,$ffff8240.w
+	;move.w #$333,$ffff8240.w
  endc 
 
 	jsr HandleDemoTrack
+
+	movem.l (sp)+,d0-d7/a0-a6
 
 	bclr.b	#5,$fffffa0f.w
 	rte
@@ -317,6 +327,7 @@ tbwbc:
 DoNothing
 	rts
 
+
 HandleDemoTrack
 	subq.l #1,DemoTrackCounter
 	bne .continue
@@ -335,20 +346,23 @@ HandleDemoTrack
 DemoTrackCounter	dc.l 1
 DemoTrackPtr		dc.l DemoTrackPartList
 
+; MARK: Track List
 ; Number of frames, part
 DemoTrackPartList
+	;dc.l 50*10,MonoSlide
+	;dc.l 0                       ; Cycle
+	dc.l 50*5,DisplayTitle
 	dc.l 50*10,SurpriseBomb
+	dc.l 50*5,DisplayMadeIn5Days
 	dc.l 50*10,MindBender
+	dc.l 50*5,DisplayGreetings
 	dc.l 50*10,MonoSlide
+	dc.l 50*5,DisplayCredits
 	dc.l 0                       ; Cycle
 
 
 ; MARK: MonoSlide
 MonoSlide
-	movem.l d0-d7/a0-a6,-(sp)
-	lea $ffff8240.w,a6
-	lea Whatever,a0
-
 	move.l #$0000FFFF,d6   ; Color of tile
 	
 	moveq #0,d1
@@ -357,7 +371,7 @@ MonoSlide
 	sub.l d1,d2
 
 	; Complete the top black line (+ offset to show the start)
-	pause 128-20-20
+	pause 128-20-20-20-20-16
 
 	; The alternated color grid
 	; d0 - trash register used by the "pause" macro and the various delays
@@ -409,8 +423,6 @@ MonoSlide
 	and.w #15,d0
 	move.w d0,ShiftPosition 
 .skip
-
-	movem.l (sp)+,d0-d7/a0-a6
 	rts
 
 
@@ -460,16 +472,12 @@ DrawBlackAndWhiteTiles
 
 ; MARK: MindBender
 MindBender
-	movem.l d0-d7/a0-a6,-(sp)
-	lea $ffff8240.w,a6
-	lea Whatever,a0
-
 	move.w #$703,d5        ; Color of the marker
  	move.w #$370,d6        ; Color of first tile
  	move.w #$263,d7        ; Color of second tile
 
 	; The alternated color grid
-	pause 64-20-10-8-2
+	pause 24+64+20
 	bsr DrawGradientColorTilesFlip
 	addq #1,d6
 	bsr DrawGradientColorTilesFlop
@@ -488,8 +496,6 @@ MindBender
 	;addq #1,d6
 
 	move.w #$000,(a6)              ; Black at the end
-
-	movem.l (sp)+,d0-d7/a0-a6
 	rts
 
 
@@ -573,16 +579,8 @@ DrawGradientColorTilesFlop
 
 
 ; MARK: Surprise
-;
-; move.w #$xxx,(a6)   ; 12   512/12 = 42.666 blocs
-; move.w (a0)+,(a6)   ; 12 
-; move.w dn,(a6)      ; 8    512/8 = 64 blocs
 SurpriseBomb
-	movem.l d0-d7/a0-a6,-(sp)
-	lea $ffff8240.w,a6
-	lea Whatever,a0
-
-	pause 64-20-10
+	pause 64+20+8
 
  	lea DbugSurprise80x80,a0
 	add.l SurpriseBombOffset,a0
@@ -591,20 +589,18 @@ SurpriseBomb
 	; First lines
 	REPT 11
 	move.l a0,a1       ; 4/1
-	move.w #$770,(a6)  ; 12/3
 	REPT 40
 	move.w (a1)+,(a6)  ; 12/3
 	ENDR               ; 40*3=120
-	pause 4
+	pause 4+3
 	ENDR
 
 	; Skip to next line
 	move.l a0,a1       ; 4/1
-	move.w #$770,(a6)  ; 12/3
 	REPT 40
 	move.w (a1)+,(a6)  ; 12/3
 	ENDR               ; 40*3=120
-	pause 4-2
+	pause 4+3-2
 	lea 80*2(a0),a0    ; 16/4
 
 	ENDR
@@ -612,8 +608,6 @@ SurpriseBomb
 	move.w #0,(a6)   ; Final black marker
 
 	; Variable time
-	;add.l #2,SurpriseBombOffset
-
 	; See about 33 tiles horizontally, about 18 tiles vertically
 	move.w SurpriseBombXPos,d0
 	add.w SurpriseBombXDir,d0
@@ -652,8 +646,6 @@ SurpriseBomb
 	mulu #80*2,d1
 	add.l d1,SurpriseBombOffset
 
-
-	movem.l (sp)+,d0-d7/a0-a6
 	rts
 
 SurpriseBombOffset 		dc.l 0
@@ -671,11 +663,7 @@ DefenceForceLogoOffset	dc.w 0
 
 
 DefenceForceLogo
-	movem.l d0-d7/a0-a6,-(sp)
-	lea $ffff8240.w,a6
-	lea Whatever,a0
-
-	pause 64-20-10-10-5-5
+	pause 14-4
 
  	lea DefenceForce320x5,a0
 	move DefenceForceLogoOffset,d0
@@ -706,21 +694,78 @@ DefenceForceLogo
 	lea 512*2(a0),a0    ; 16/4
 
 	ENDR
-
  
 	move.w #0,(a6)   ; Final black marker
-	movem.l (sp)+,d0-d7/a0-a6
+	rts
+
+
+
+
+DisplayMadeIn5Days
+ 	lea MadeIn5Days,a0
+	bra Display33x18Picture
+
+DisplayCredits
+ 	lea Credits,a0
+	bra Display33x18Picture
+
+DisplayGreetings
+ 	lea Greetings,a0
+	bra Display33x18Picture
+
+DisplayTitle	
+ 	lea Title,a0
+	bra Display33x18Picture
+
+; 33x18 picture made of 16x12 pixels -> About 384x216 pixels
+Display33x18Picture
+	pause 42+60+8+4+2
+
+	REPT 18
+
+	; First lines
+	REPT 11
+	move.l a0,a1       ; 4/1
+	REPT 40
+	move.w (a1)+,(a6)  ; 12/3
+	ENDR               ; 40*3=120
+	pause 4+3
+	ENDR
+
+	; Skip to next line
+	move.l a0,a1       ; 4/1
+	REPT 40
+	move.w (a1)+,(a6)  ; 12/3
+	ENDR               ; 40*3=120
+	pause 4+3-2
+	lea 33*2(a0),a0    ; 16/4
+
+	ENDR
+	move.w #0,(a6)   ; Final black marker
 	rts
 
 
 	SECTION DATA
 
 DbugSurprise80x80
-	incbin "surprise.bin"
+	incbin "export\surprise.bin"
 
 DefenceForce320x5
-	incbin "defence-force-logo.bin"
+	incbin "export\top_banner.bin"
 	ds.w 512
+
+MadeIn5Days
+	incbin "export\made_in_5_days.bin"
+
+Credits
+	incbin "export\credits.bin"
+
+Greetings
+	incbin "export\greetings.bin"
+
+Title
+	incbin "export\title.bin"
+	
 
 Music
 	incbin "musics\SOS.SND"
