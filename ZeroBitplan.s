@@ -30,7 +30,7 @@
 ; - Music by someone else
 ;
 
-
+enable_music  equ 0
 
 
 ; MARK: Macros
@@ -119,8 +119,10 @@ RestoreSettings
 	clr.b	$fffffa19.w
 	clr.b	$ffff820a.w
 
+  ifne enable_music
 	jsr Music+4             ; Stop music
 	jsr YmSilent
+  endc
 	rts
 
 
@@ -147,8 +149,10 @@ YmSilent
 Initialization
 	bsr SetScreen
 	
+ ifne enable_music
 	moveq #1,d0             ; Subtune number
 	jsr Music+0             ; Init music
+  endc
 
 	clr.b	$fffffa07.w		; iera
 	clr.b	$fffffa09.w		; ierb
@@ -195,6 +199,8 @@ decale:	move.b	#$c2,$fffffa1f.w	; timer A - set counter
 
 hbl:
 	rte
+
+snval			ds.w	1
 
 ; On first frame, record HBL delay for lines 62 to 66.
 ; Since the delay is periodic every 5 lines, delay for lines 62-66
@@ -268,14 +274,17 @@ timer_a:
  endc
 	bsr	nextshift
 
-	;bsr MonoSlide
-	;bsr SurpriseBomb
-	bsr MindBender
+	bsr DefenceForceLogo
+_auto_jsr	
+	jsr DoNothing
 
+ ifne enable_music
 	move.w #$700,$ffff8240.w
 	jsr Music+8             ; Play music
 	move.w #$333,$ffff8240.w
+ endc 
 
+	jsr HandleDemoTrack
 
 	bclr.b	#5,$fffffa0f.w
 	rte
@@ -305,6 +314,33 @@ tbwbc:
 	bclr.b	#0,$fffffa0f.w
 	rte
 
+DoNothing
+	rts
+
+HandleDemoTrack
+	subq.l #1,DemoTrackCounter
+	bne .continue
+	move.l DemoTrackPtr,a0
+	move.l (a0)+,DemoTrackCounter
+	bne .not_the_end
+	lea DemoTrackPartList,a0
+	move.l (a0)+,DemoTrackCounter
+.not_the_end	
+	move.l (a0)+,_auto_jsr+2
+	move.l a0,DemoTrackPtr
+.continue	
+	rts
+
+
+DemoTrackCounter	dc.l 1
+DemoTrackPtr		dc.l DemoTrackPartList
+
+; Number of frames, part
+DemoTrackPartList
+	dc.l 50*10,SurpriseBomb
+	dc.l 50*10,MindBender
+	dc.l 50*10,MonoSlide
+	dc.l 0                       ; Cycle
 
 
 ; MARK: MonoSlide
@@ -312,15 +348,6 @@ MonoSlide
 	movem.l d0-d7/a0-a6,-(sp)
 	lea $ffff8240.w,a6
 	lea Whatever,a0
-
-	move.w ShiftPosition,d0	
-	subq #1,ShiftCounter
-	bne .skip
-	move #50,ShiftCounter
-	addq.w #2,d0
-	and.w #15,d0
-	move.w d0,ShiftPosition 
-.skip
 
 	move.l #$0000FFFF,d6   ; Color of tile
 	
@@ -330,7 +357,7 @@ MonoSlide
 	sub.l d1,d2
 
 	; Complete the top black line (+ offset to show the start)
-	pause 25
+	pause 128-20-20
 
 	; The alternated color grid
 	; d0 - trash register used by the "pause" macro and the various delays
@@ -345,24 +372,43 @@ MonoSlide
 	; One direction
 	moveq #0,d5
 	bsr DrawBlackAndWhiteTiles
+
 	move.l d1,d5
 	bsr DrawBlackAndWhiteTiles
 	nop
 	bsr DrawBlackAndWhiteTiles
+
 	move.l d2,d5
 	bsr DrawBlackAndWhiteTiles
 	nop
 	bsr DrawBlackAndWhiteTiles
+
 	move.l d1,d5
 	bsr DrawBlackAndWhiteTiles
 	nop
 	bsr DrawBlackAndWhiteTiles
+
 	move.l d2,d5
 	bsr DrawBlackAndWhiteTiles
 	nop
 	bsr DrawBlackAndWhiteTiles
+
+	move.l d1,d5
+	bsr DrawBlackAndWhiteTiles
 	nop
+	bsr DrawBlackAndWhiteTiles
+
 	bsr DrawLastSeparatorLine
+
+	; Variable time here
+	move.w ShiftPosition,d0	
+	subq #1,ShiftCounter
+	bne .skip
+	move #50,ShiftCounter
+	addq.w #2,d0
+	and.w #15,d0
+	move.w d0,ShiftPosition 
+.skip
 
 	movem.l (sp)+,d0-d7/a0-a6
 	rts
@@ -438,8 +484,8 @@ MindBender
 	addq #1,d6
 	bsr DrawGradientColorTilesFlip
 	addq #1,d6
-	bsr DrawGradientColorTilesFlop
-	addq #1,d6
+	;bsr DrawGradientColorTilesFlop
+	;addq #1,d6
 
 	move.w #$000,(a6)              ; Black at the end
 
@@ -538,11 +584,12 @@ SurpriseBomb
 
 	pause 64-20-10
 
- 	lea DbugSurprise80x80+160*20+2*20,a0
-	REPT 33
+ 	lea DbugSurprise80x80,a0
+	add.l SurpriseBombOffset,a0
+	REPT 20
 
 	; First lines
-	REPT 7
+	REPT 11
 	move.l a0,a1       ; 4/1
 	move.w #$770,(a6)  ; 12/3
 	REPT 40
@@ -561,6 +608,104 @@ SurpriseBomb
 	lea 80*2(a0),a0    ; 16/4
 
 	ENDR
+ 
+	move.w #0,(a6)   ; Final black marker
+
+	; Variable time
+	;add.l #2,SurpriseBombOffset
+
+	; See about 33 tiles horizontally, about 18 tiles vertically
+	move.w SurpriseBombXPos,d0
+	add.w SurpriseBombXDir,d0
+	bpl .no_left_bounce
+	sub.w SurpriseBombXDir,d0
+	neg.w SurpriseBombXDir
+.no_left_bounce
+
+	cmp.w #80-33,d0
+	ble .no_right_bounce
+	sub.w SurpriseBombXDir,d0
+	neg.w SurpriseBombXDir
+.no_right_bounce
+	move.w d0,SurpriseBombXPos
+
+
+	move.w SurpriseBombYPos,d1
+	add.w SurpriseBombYDir,d1
+	bpl .no_top_bounce
+	sub.w SurpriseBombYDir,d1
+	neg.w SurpriseBombYDir
+.no_top_bounce
+
+	cmp.w #80-18,d1
+	ble .no_bottom_bounce
+	sub.w SurpriseBombYDir,d1
+	neg.w SurpriseBombYDir
+.no_bottom_bounce
+	move.w d1,SurpriseBombYPos
+
+
+	ext.l d0
+	add.l d0,d0
+	move.l d0,SurpriseBombOffset
+
+	mulu #80*2,d1
+	add.l d1,SurpriseBombOffset
+
+
+	movem.l (sp)+,d0-d7/a0-a6
+	rts
+
+SurpriseBombOffset 		dc.l 0
+
+SurpriseBombXPos        dc.w 0
+SurpriseBombXDir        dc.w 1
+
+SurpriseBombYPos        dc.w 0
+SurpriseBombYDir        dc.w 1
+
+
+
+
+DefenceForceLogoOffset	dc.w 0
+
+
+DefenceForceLogo
+	movem.l d0-d7/a0-a6,-(sp)
+	lea $ffff8240.w,a6
+	lea Whatever,a0
+
+	pause 64-20-10-10-5-5
+
+ 	lea DefenceForce320x5,a0
+	move DefenceForceLogoOffset,d0
+	and #512*2-1,d0
+	add DefenceForceLogoOffset,a0
+	add #2,d0
+	move d0,DefenceForceLogoOffset
+
+	REPT 6
+
+	; First lines
+	REPT 7
+	move.l a0,a1       ; 4/1
+	move.w #$770,(a6)  ; 12/3
+	REPT 40
+	move.w (a1)+,(a6)  ; 12/3
+	ENDR               ; 40*3=120
+	pause 4
+	ENDR
+
+	; Skip to next line
+	move.l a0,a1       ; 4/1
+	move.w #$770,(a6)  ; 12/3
+	REPT 40
+	move.w (a1)+,(a6)  ; 12/3
+	ENDR               ; 40*3=120
+	pause 4-2
+	lea 512*2(a0),a0    ; 16/4
+
+	ENDR
 
  
 	move.w #0,(a6)   ; Final black marker
@@ -572,6 +717,10 @@ SurpriseBomb
 
 DbugSurprise80x80
 	incbin "surprise.bin"
+
+DefenceForce320x5
+	incbin "defence-force-logo.bin"
+	ds.w 512
 
 Music
 	incbin "musics\SOS.SND"
@@ -588,7 +737,6 @@ ShiftPosition 	dc.w 0
 
 bss_start:
 
-snval			ds.w	1
 settings        ds.b    256
 screen_buffer	ds.b	160*276+256
 
