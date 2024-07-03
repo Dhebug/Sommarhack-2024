@@ -30,7 +30,7 @@
 ; - Music by someone else
 ;
 
-enable_music  equ 1
+enable_music  equ 0
 
 
 ; MARK: Macros
@@ -148,7 +148,8 @@ YmSilent
 
 Initialization
 	bsr SetScreen
-	
+	jsr HandleDemoTrack
+
  ifne enable_music
 	moveq #1,d0             ; Subtune number
 	jsr Music+0             ; Init music
@@ -338,7 +339,10 @@ HandleDemoTrack
 	move.l (a0)+,DemoTrackCounter
 .not_the_end	
 	move.l (a0)+,_auto_jsr+2
+	move.l (a0)+,._auto_init+2
 	move.l a0,DemoTrackPtr
+._auto_init
+	jsr InitCredits	
 .continue	
 	rts
 
@@ -349,15 +353,49 @@ DemoTrackPtr		dc.l DemoTrackPartList
 ; MARK: Track List
 ; Number of frames, part
 DemoTrackPartList
-	;dc.l 50*10,MonoSlide
-	;dc.l 0                       ; Cycle
-	dc.l 50*5,DisplayTitle
-	dc.l 50*10,SurpriseBomb
-	dc.l 50*5,DisplayMadeIn5Days
-	dc.l 50*10,MindBender
-	dc.l 50*5,DisplayGreetings
-	dc.l 50*10,MonoSlide
-	dc.l 50*5,DisplayCredits
+	; Display the title scrolling horizontally
+	dc.l 40,DisplayTitleMove,InitTitle
+	dc.l 50*5,DisplayTitleStatic,DoNothing
+	dc.l 40,DisplayTitleMove,DoNothing
+
+	; Display the bouncing bomb #1
+	dc.l 50*5,SurpriseBomb,DoNothing
+
+	; Display the credits scrolling vertically
+	dc.l 18,DisplayCreditsMove,InitCredits
+	dc.l 50*5,DisplayCreditsStatic,DoNothing
+	dc.l 18,DisplayCreditsMove,DoNothing
+
+	; Display the Mono Slide scrolling diagonally
+	dc.l 40,DisplayMonoSlideMove,InitMonoSlide
+	dc.l 50*5,DisplayMonoSlideStatic,DoNothing
+	dc.l 40,DisplayMonoSlideMove,DoNothing
+
+	; Display the Mono Slide effect
+	dc.l 50*10,MonoSlide,DoNothing
+
+	; Display the Mind Bender scrolling diagonally
+	dc.l 40,DisplayMindBenderMove,InitMindBender
+	dc.l 50*5,DisplayMindBenderStatic,DoNothing
+	dc.l 40,DisplayMindBenderMove,DoNothing
+
+	; Display the Mind Bender effect
+	dc.l 50*10,MindBender,DoNothing
+	dc.l 0
+
+	; Display the bouncing bomb #2
+	dc.l 50*5,SurpriseBomb,DoNothing
+
+
+	;dc.l 50*5,DisplayMonoSlide
+	;dc.l 50*5,DisplayTitle,DoNothing
+	dc.l 0                       ; Cycle
+	dc.l 50*5,DisplayMadeIn5Days,DoNothing
+	dc.l 50*5,SurpriseBomb,DoNothing
+	;dc.l 50*5,DisplayMindBender,DoNothing
+	dc.l 50*5,DisplayGreetings,DoNothing
+	;dc.l 50*5,DisplayMonoSlide,DoNothing
+	;dc.l 50*5,DisplayCredits,DoNothing
 	dc.l 0                       ; Cycle
 
 
@@ -700,26 +738,108 @@ DefenceForceLogo
 
 
 
-
+; MARK: Display Picture
 DisplayMadeIn5Days
  	lea MadeIn5Days,a0
-	bra Display33x18Picture
+	bra Display40x18Picture
 
-DisplayCredits
- 	lea Credits,a0
-	bra Display33x18Picture
+
+
+
+TitlePosition	dc.l 0
+
+InitTitle	
+ 	move.l #Title,TitlePosition
+	rts
+
+DisplayTitleMove
+ 	move.l TitlePosition,a0
+	move.w #120*2,d7
+	bsr Display40x18Picture
+	add.l #2,TitlePosition
+	rts
+
+DisplayTitleStatic
+ 	move.l TitlePosition,a0
+	move.w #120*2,d7
+	bsr Display40x18Picture
+	rts
+
+
+
+CreditsPosition	dc.l 0
+
+InitCredits
+ 	move.l #Credits,CreditsPosition
+	rts
+
+DisplayCreditsMove
+ 	move.l CreditsPosition,a0
+	move.w #40*2,d7
+	bsr Display40x18Picture
+	add.l #40*2,CreditsPosition
+	rts
+
+DisplayCreditsStatic
+ 	move.l CreditsPosition,a0
+	move.w #40*2,d7
+	bsr Display40x18Picture
+	rts
+
+
+
+MindBenderPosition	dc.l 0
+
+InitMindBender
+ 	move.l #PictureMindBender,MindBenderPosition
+	rts
+
+DisplayMindBenderMove
+ 	move.l MindBenderPosition,a0
+	move.w #120*2,d7
+	bsr Display40x18Picture
+	add.l #120*2+2,MindBenderPosition
+	rts
+
+DisplayMindBenderStatic
+ 	move.l MindBenderPosition,a0
+	move.w #120*2,d7
+	bsr Display40x18Picture
+	rts
+
+
+
+MonoSlidePosition	dc.l 0
+
+InitMonoSlide
+ 	move.l #PictureMonoSlide,MonoSlidePosition
+	rts
+
+DisplayMonoSlideMove
+ 	move.l MonoSlidePosition,a0
+	move.w #120*2,d7
+	bsr Display40x18Picture
+	add.l #120*2+2,MonoSlidePosition
+	rts
+
+DisplayMonoSlideStatic
+ 	move.l MonoSlidePosition,a0
+	move.w #120*2,d7
+	bsr Display40x18Picture
+	rts
+
+
 
 DisplayGreetings
  	lea Greetings,a0
-	bra Display33x18Picture
+	move.w #40*2,d7
+	bsr Display40x18Picture
+	rts
 
-DisplayTitle	
- 	lea Title,a0
-	bra Display33x18Picture
 
-; 33x18 picture made of 16x12 pixels -> About 384x216 pixels
-Display33x18Picture
-	pause 42+60+8+4+2
+; 40x18 picture made of 16x12 pixels -> About 384x216 pixels
+Display40x18Picture
+	pause 42+60+8+4+2-8-2-2-4
 
 	REPT 18
 
@@ -738,7 +858,7 @@ Display33x18Picture
 	move.w (a1)+,(a6)  ; 12/3
 	ENDR               ; 40*3=120
 	pause 4+3-2
-	lea 33*2(a0),a0    ; 16/4
+	add d7,a0          ;  8/2 ; 16/4
 
 	ENDR
 	move.w #0,(a6)   ; Final black marker
@@ -766,6 +886,11 @@ Greetings
 Title
 	incbin "export\title.bin"
 	
+PictureMindBender
+	incbin "export\mind_bender.bin"
+
+PictureMonoSlide
+	incbin "export\mono_slide.bin"
 
 Music
 	incbin "musics\SOS.SND"

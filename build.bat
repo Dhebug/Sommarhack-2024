@@ -15,6 +15,8 @@ md export
 %osdk%\bin\PictConv.exe -m1 -f3 -o2 data\credits.png export\credits.bin
 %osdk%\bin\PictConv.exe -m1 -f3 -o2 data\greetings.png export\greetings.bin
 %osdk%\bin\PictConv.exe -m1 -f3 -o2 data\title.png export\title.bin
+%osdk%\bin\PictConv.exe -m1 -f3 -o2 data\mind_bender.png export\mind_bender.bin
+%osdk%\bin\PictConv.exe -m1 -f3 -o2 data\mono_slide.png export\mono_slide.bin
 
 ::
 :: http://sun.hasenbraten.de/vasm/index.php?view=tutorial
@@ -27,6 +29,8 @@ bin\vasm.exe -m68000 -Ftos -noesc -no-opt -o 0Bitplan.prg ZeroBitplan.s
 IF ERRORLEVEL 1 GOTO ErrorVasm
 
 copy 0Bitplan.prg D:\_emul_\atari\_mount_\DEFENCEF.RCE\0Bitplan
+
+if exist S:\sommarhack\0Bitplan.prg copy 0Bitplan.prg S:\sommarhack\0Bitplan.prg
 
 ::pause
 goto :End
