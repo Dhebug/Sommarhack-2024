@@ -30,7 +30,7 @@
 ; - Music by someone else
 ;
 
-enable_music  equ 0
+enable_music  equ 1
 
 alignment_marker equ $000     ; $770 Yellow is nice to tweak positions, but sucks when it's visible on screen
 
