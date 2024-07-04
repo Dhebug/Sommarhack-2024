@@ -17,6 +17,7 @@ md export
 %osdk%\bin\PictConv.exe -m1 -f3 -o2 data\title.png export\title.bin
 %osdk%\bin\PictConv.exe -m1 -f3 -o2 data\mind_bender.png export\mind_bender.bin
 %osdk%\bin\PictConv.exe -m1 -f3 -o2 data\mono_slide.png export\mono_slide.bin
+%osdk%\bin\PictConv.exe -m1 -f3 -o2 data\slide_show.png export\slide_show.bin
 
 ::
 :: http://sun.hasenbraten.de/vasm/index.php?view=tutorial
