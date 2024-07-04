@@ -361,6 +361,11 @@ DemoTrackPartList
 	; Display the bouncing bomb #1
 	dc.l 50*5,SurpriseBomb,DoNothing
 
+	; Display the made in 5 days
+	dc.l 40,DisplayMadeIn5DaysMove,InitMadeIn5Days
+	dc.l 50*5,DisplayMadeIn5DaysStatic,DoNothing
+	dc.l 40,DisplayMadeIn5DaysMove,DoNothing
+
 	; Display the credits scrolling vertically
 	dc.l 18,DisplayCreditsMove,InitCredits
 	dc.l 50*5,DisplayCreditsStatic,DoNothing
@@ -374,6 +379,9 @@ DemoTrackPartList
 	; Display the Mono Slide effect
 	dc.l 50*10,MonoSlide,DoNothing
 
+	; Display the vertical greetings lists
+	dc.l 486-18,DisplayGreetings,InitGreetings
+
 	; Display the Mind Bender scrolling diagonally
 	dc.l 40,DisplayMindBenderMove,InitMindBender
 	dc.l 50*5,DisplayMindBenderStatic,DoNothing
@@ -384,16 +392,11 @@ DemoTrackPartList
 	dc.l 0
 
 	; Display the bouncing bomb #2
-	dc.l 50*5,SurpriseBomb,DoNothing
+	;dc.l 50*5,SurpriseBomb,DoNothing
 
-
-	;dc.l 50*5,DisplayMonoSlide
-	;dc.l 50*5,DisplayTitle,DoNothing
-	dc.l 0                       ; Cycle
-	dc.l 50*5,DisplayMadeIn5Days,DoNothing
-	dc.l 50*5,SurpriseBomb,DoNothing
+	;
+	;dc.l 50*5,SurpriseBomb,DoNothing
 	;dc.l 50*5,DisplayMindBender,DoNothing
-	dc.l 50*5,DisplayGreetings,DoNothing
 	;dc.l 50*5,DisplayMonoSlide,DoNothing
 	;dc.l 50*5,DisplayCredits,DoNothing
 	dc.l 0                       ; Cycle
@@ -739,9 +742,24 @@ DefenceForceLogo
 
 
 ; MARK: Display Picture
-DisplayMadeIn5Days
- 	lea MadeIn5Days,a0
-	bra Display40x18Picture
+MadeIn5DaysPosition	dc.l 0
+
+InitMadeIn5Days
+ 	move.l #MadeIn5Days,MadeIn5DaysPosition
+	rts
+
+DisplayMadeIn5DaysMove
+ 	move.l MadeIn5DaysPosition,a0
+	move.w #120*2,d7
+	bsr Display40x18Picture
+	add.l #2,MadeIn5DaysPosition
+	rts
+
+DisplayMadeIn5DaysStatic
+ 	move.l MadeIn5DaysPosition,a0
+	move.w #120*2,d7
+	bsr Display40x18Picture
+	rts
 
 
 
@@ -830,11 +848,19 @@ DisplayMonoSlideStatic
 
 
 
+greetingsPosition	dc.l 0
+
+InitGreetings
+ 	move.l #Greetings,greetingsPosition   ; 40x486
+	rts
+
 DisplayGreetings
- 	lea Greetings,a0
+ 	move.l greetingsPosition,a0
 	move.w #40*2,d7
 	bsr Display40x18Picture
+	add.l #40*2,greetingsPosition
 	rts
+
 
 
 ; 40x18 picture made of 16x12 pixels -> About 384x216 pixels
