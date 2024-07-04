@@ -32,6 +32,8 @@
 
 enable_music  equ 0
 
+alignment_marker equ $000     ; $770 Yellow is nice to tweak positions, but sucks when it's visible on screen
+
 
 ; MARK: Macros
 ;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -334,6 +336,7 @@ HandleDemoTrack
 	bne .continue
 	move.l DemoTrackPtr,a0
 	move.l (a0)+,DemoTrackCounter
+	bmi exit                              ; Negative value to quit
 	bne .not_the_end
 	lea DemoTrackPartList,a0
 	move.l (a0)+,DemoTrackCounter
@@ -353,6 +356,9 @@ DemoTrackPtr		dc.l DemoTrackPartList
 ; MARK: Track List
 ; Number of frames, part
 DemoTrackPartList
+	; Wait a second or so before starting
+	dc.l 50*2,DoNothing,DoNothing
+
 	; Display the title scrolling horizontally
 	dc.l 40,DisplayTitleMove,InitTitle
 	dc.l 50*5,DisplayTitleStatic,DoNothing
@@ -379,6 +385,17 @@ DemoTrackPartList
 	; Display the Mono Slide effect
 	dc.l 50*10,MonoSlide,DoNothing
 
+	; Display the slide show scrolling horizontally
+	dc.l 40,DisplaySlideShowMove,InitSlideShow
+	dc.l 50*4,DisplaySlideShowStatic,DoNothing     ; First picture
+	dc.l 40,DisplaySlideShowMove,DoNothing
+	dc.l 50*4,DisplaySlideShowStatic,DoNothing     ; Second picture
+	dc.l 40,DisplaySlideShowMove,DoNothing
+	dc.l 50*4,DisplaySlideShowStatic,DoNothing     ; Third picture
+	dc.l 40,DisplaySlideShowMove,DoNothing
+	dc.l 50*4,DisplaySlideShowStatic,DoNothing     ; Fourth picture
+	dc.l 40,DisplaySlideShowMove,DoNothing
+
 	; Display the vertical greetings lists
 	dc.l 486-18,DisplayGreetings,InitGreetings
 
@@ -389,17 +406,14 @@ DemoTrackPartList
 
 	; Display the Mind Bender effect
 	dc.l 50*10,MindBender,DoNothing
-	dc.l 0
+	
+	; Display the end
+	dc.l 216,DisplayTheEndMove,InitTheEnd
+	dc.l 50*5,DisplayTheEndStatic,DoNothing
+	dc.l 216,DisplayTheEndMove,DoNothing
 
-	; Display the bouncing bomb #2
-	;dc.l 50*5,SurpriseBomb,DoNothing
+	dc.l -1   ; Back to desktop
 
-	;
-	;dc.l 50*5,SurpriseBomb,DoNothing
-	;dc.l 50*5,DisplayMindBender,DoNothing
-	;dc.l 50*5,DisplayMonoSlide,DoNothing
-	;dc.l 50*5,DisplayCredits,DoNothing
-	dc.l 0                       ; Cycle
 
 
 ; MARK: MonoSlide
@@ -619,34 +633,13 @@ DrawGradientColorTilesFlop
 	rts             ; 16/4
 
 
+
 ; MARK: Surprise
 SurpriseBomb
-	pause 64+20+8
-
  	lea DbugSurprise80x80,a0
 	add.l SurpriseBombOffset,a0
-	REPT 20
-
-	; First lines
-	REPT 11
-	move.l a0,a1       ; 4/1
-	REPT 40
-	move.w (a1)+,(a6)  ; 12/3
-	ENDR               ; 40*3=120
-	pause 4+3
-	ENDR
-
-	; Skip to next line
-	move.l a0,a1       ; 4/1
-	REPT 40
-	move.w (a1)+,(a6)  ; 12/3
-	ENDR               ; 40*3=120
-	pause 4+3-2
-	lea 80*2(a0),a0    ; 16/4
-
-	ENDR
- 
-	move.w #0,(a6)   ; Final black marker
+	move.w #80*2,d7
+	bsr Display40x18Picture
 
 	; Variable time
 	; See about 33 tiles horizontally, about 18 tiles vertically
@@ -700,8 +693,8 @@ SurpriseBombYDir        dc.w 1
 
 
 
+; MARK: Picture Top
 DefenceForceLogoOffset	dc.w 0
-
 
 DefenceForceLogo
 	pause 14-4
@@ -718,7 +711,7 @@ DefenceForceLogo
 	; First lines
 	REPT 7
 	move.l a0,a1       ; 4/1
-	move.w #$770,(a6)  ; 12/3
+	move.w #alignment_marker,(a6)  ; 12/3
 	REPT 40
 	move.w (a1)+,(a6)  ; 12/3
 	ENDR               ; 40*3=120
@@ -727,7 +720,7 @@ DefenceForceLogo
 
 	; Skip to next line
 	move.l a0,a1       ; 4/1
-	move.w #$770,(a6)  ; 12/3
+	move.w #alignment_marker,(a6)  ; 12/3
 	REPT 40
 	move.w (a1)+,(a6)  ; 12/3
 	ENDR               ; 40*3=120
@@ -741,7 +734,7 @@ DefenceForceLogo
 
 
 
-; MARK: Display Picture
+; MARK: Picture 5 days
 MadeIn5DaysPosition	dc.l 0
 
 InitMadeIn5Days
@@ -763,7 +756,7 @@ DisplayMadeIn5DaysStatic
 
 
 
-
+; MARK: Picture Title
 TitlePosition	dc.l 0
 
 InitTitle	
@@ -784,7 +777,7 @@ DisplayTitleStatic
 	rts
 
 
-
+; MARK: Picture Credits
 CreditsPosition	dc.l 0
 
 InitCredits
@@ -805,7 +798,7 @@ DisplayCreditsStatic
 	rts
 
 
-
+; MARK: Picture Mind
 MindBenderPosition	dc.l 0
 
 InitMindBender
@@ -826,7 +819,7 @@ DisplayMindBenderStatic
 	rts
 
 
-
+; MARK: Picture Mono
 MonoSlidePosition	dc.l 0
 
 InitMonoSlide
@@ -847,7 +840,7 @@ DisplayMonoSlideStatic
 	rts
 
 
-
+; MARK: Picture Greets
 greetingsPosition	dc.l 0
 
 InitGreetings
@@ -862,10 +855,10 @@ DisplayGreetings
 	rts
 
 
-
+; MARK: Display Picture
 ; 40x18 picture made of 16x12 pixels -> About 384x216 pixels
 Display40x18Picture
-	pause 42+60+8+4+2-8-2-2-4
+	pause 100
 
 	REPT 18
 
@@ -891,6 +884,65 @@ Display40x18Picture
 	rts
 
 
+; MARK: Slideshow
+SlideShowPosition	dc.l 0
+
+InitSlideShow
+ 	move.l #PictureSlideShow,SlideShowPosition
+	rts
+
+DisplaySlideShowMove
+ 	move.l SlideShowPosition,a1
+	move.w #200*2,d7
+	bsr DisplayHighResPicture
+	add.l #2,SlideShowPosition
+	rts
+
+DisplaySlideShowStatic
+ 	move.l SlideShowPosition,a1
+	move.w #200*2,d7
+	bsr DisplayHighResPicture
+	rts
+
+; MARK: Slideshow
+TheEndPosition	dc.l 0
+
+InitTheEnd
+ 	move.l #PictureTheEnd,TheEndPosition
+	rts
+
+DisplayTheEndMove
+ 	move.l TheEndPosition,a1
+	move.w #0,d7
+	bsr DisplayHighResPicture
+	add.l #40*2,TheEndPosition
+	rts
+
+DisplayTheEndStatic
+ 	move.l TheEndPosition,a1
+	move.w #0,d7
+	bsr DisplayHighResPicture
+	rts
+
+
+; MARK: Display Highrez
+DisplayHighResPicture	
+	pause 100
+
+	move.w #216-1,d6
+.loop	
+	move.w #alignment_marker,(a6)
+	REPT 40
+	move.w (a1)+,(a6)  ; 12/3
+	ENDR               ; 40*3=120
+	;pause 2
+	add d7,a1          ;  8/2 ; 16/4
+	dbra d6,.loop
+	move.w #0,(a6)   ; Final black marker
+	rts
+
+
+; MARK: - DATA -
 	SECTION DATA
 
 DbugSurprise80x80
@@ -918,6 +970,13 @@ PictureMindBender
 PictureMonoSlide
 	incbin "export\mono_slide.bin"
 
+PictureSlideShow
+	incbin "export\slide_show.bin"
+
+PictureTheEnd
+	incbin "export\the_end.bin"
+
+
 Music
 	incbin "musics\SOS.SND"
 
@@ -927,6 +986,7 @@ ShiftCounter    dc.w 50
 ShiftPosition 	dc.w 0
 
 
+; MARK: - BSS -
 	SECTION BSS
 
 	even
