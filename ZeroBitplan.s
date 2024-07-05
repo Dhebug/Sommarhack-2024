@@ -30,9 +30,9 @@
 ; - Music by someone else
 ;
 
-enable_music  equ 1
+enable_music  equ 0
 
-alignment_marker equ $000     ; $770 Yellow is nice to tweak positions, but sucks when it's visible on screen
+alignment_marker equ $770     ; $770 Yellow is nice to tweak positions, but sucks when it's visible on screen
 
 
 ; MARK: Macros
@@ -356,6 +356,9 @@ DemoTrackPtr		dc.l DemoTrackPartList
 ; MARK: Track List
 ; Number of frames, part
 DemoTrackPartList
+	dc.l 50*2,DisplayRasters,DoNothing
+	dc.l 0
+
 	; Wait a second or so before starting
 	dc.l 50*2,DoNothing,DoNothing
 
@@ -942,6 +945,267 @@ DisplayHighResPicture
 	rts
 
 
+; MARK: Display rasters
+DisplayRasters
+	pause 100 ;+20
+
+	lea RastersBuffer,a0
+
+	move.w #216-1,d6
+.loop	
+	move.w #alignment_marker,(a6)
+	move.w (a0)+,(a6)  ; 12/3
+	pause 2+39*3
+	dbra d6,.loop
+	move.w #0,(a6)   ; Final black marker
+
+	; Generate rasters
+	lea sine_255,a6
+
+ ifne 0
+	; Erase raster buffer
+	lea RastersBuffer,a0
+	moveq #0,d0
+	moveq #0,d1
+	moveq #0,d2
+	moveq #0,d3
+	moveq #216*2/16-1,d7
+.clear
+	move.l d0,(a0)+
+	move.l d1,(a0)+
+	move.l d2,(a0)+
+	move.l d3,(a0)+
+	dbra d7,.clear
+ endc	
+
+	; Draw the curtains
+	; 216/32=6.75
+	; 216/16=13.5
+	; 216/8=27
+	move.w CurtainRasterOffset,d0
+	add.w #2,d0
+	and.w #64*2-1,d0
+	move.w d0,CurtainRasterOffset
+
+	lea RastersBuffer,a0
+	lea CurtainRaster,a1
+	add.w d0,a1
+	REPT 8
+	move.l (a1),12*32(a0)
+	move.l (a1),11*32(a0)
+	move.l (a1),10*32(a0)
+	move.l (a1),9*32(a0)
+	move.l (a1),8*32(a0)
+	move.l (a1),7*32(a0)
+	move.l (a1),6*32(a0)
+	move.l (a1),5*32(a0)
+	move.l (a1),4*32(a0)
+	move.l (a1),3*32(a0)
+	move.l (a1),2*32(a0)
+	move.l (a1),1*32(a0)
+	move.l (a1)+,(a0)+
+	ENDR
+
+
+	; Draw the bouncing rasters
+	; The sinus table goes from 0 to 128, so need to center on the buffer
+	lea RastersBuffer,a0
+
+	; Wobble the center axis
+	move.w RasterPositionAngle,d0
+	add.w #2,d0
+	and.w #510,d0
+	move.w d0,RasterPositionAngle
+	move.w (a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	lsr.w #1,d1         ; 00 to 63
+	add.w d1,d1
+	add.w d1,a0
+
+	move.w RasterAngle,d0
+	add.w #8,d0
+	and.w #510,d0
+	move.w d0,RasterAngle
+
+	; Blue
+	lea BlueRaster,a1
+	move.w 63*2(a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	add.w d1,d1
+	lea (a0,d1),a5
+	REPT 7
+	move.l (a1)+,(a5)+
+	ENDR
+
+
+	; Blue Cyan 
+	lea BlueCyanRaster,a1
+	move.w 56*2(a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	add.w d1,d1
+	lea (a0,d1),a5
+	REPT 7
+	move.l (a1)+,(a5)+
+	ENDR
+
+	; Cyan
+	lea CyanRaster,a1
+	move.w 48*2(a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	add.w d1,d1
+	lea (a0,d1),a5
+	REPT 7
+	move.l (a1)+,(a5)+
+	ENDR
+
+	; Cyan-Green
+	lea CyanGreenRaster,a1
+	move.w 40*2(a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	add.w d1,d1
+	lea (a0,d1),a5
+	REPT 7
+	move.l (a1)+,(a5)+
+	ENDR
+
+	; Green
+	lea GreenRaster,a1
+	move.w 32*2(a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	add.w d1,d1
+	lea (a0,d1),a5
+	REPT 7
+	move.l (a1)+,(a5)+
+	ENDR
+
+	; Lime
+	lea LimeRaster,a1
+	move.w 24*2(a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	add.w d1,d1
+	lea (a0,d1),a5
+	REPT 7
+	move.l (a1)+,(a5)+
+	ENDR
+
+	; Yellow
+	lea YellowRaster,a1
+	move.w 16*2(a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	add.w d1,d1
+	lea (a0,d1),a5
+	REPT 7
+	move.l (a1)+,(a5)+
+	ENDR
+
+	; Orange
+	lea OrangeRaster,a1
+	move.w 8*2(a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	add.w d1,d1
+	lea (a0,d1),a5
+	REPT 7
+	move.l (a1)+,(a5)+
+	ENDR
+
+	; Red
+	lea RedRaster,a1
+	move.w 0*2(a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	add.w d1,d1
+	lea (a0,d1),a5
+	REPT 7
+	move.l (a1)+,(a5)+
+	ENDR
+
+	rts
+
+RasterPositionAngle
+	dc.w 0
+
+RasterAngle	
+	dc.w 0
+
+	ds.w 216
+RastersBuffer
+	ds.w 216
+	ds.w 216
+
+
+BlueRaster  	dc.w $001,$002,$003,$004,$005,$006,$007,$006,$000,$004,$003,$002,$001,$000	
+BlueCyanRaster 	dc.w $011,$012,$023,$024,$035,$036,$047,$036,$035,$024,$023,$012,$011,$000	
+CyanRaster   	dc.w $011,$022,$033,$044,$055,$066,$077,$066,$055,$044,$033,$022,$011,$000	
+CyanGreenRaster dc.w $011,$021,$032,$042,$053,$063,$074,$063,$053,$042,$032,$021,$011,$000	
+GreenRaster   	dc.w $010,$020,$030,$040,$050,$060,$070,$060,$050,$040,$030,$020,$010,$000	
+LimeRaster   	dc.w $010,$120,$130,$240,$350,$460,$470,$460,$350,$240,$130,$120,$010,$000	
+YellowRaster   	dc.w $110,$220,$330,$440,$550,$660,$770,$660,$550,$440,$330,$220,$110,$000	
+OrangeRaster   	dc.w $100,$210,$310,$420,$520,$630,$730,$630,$520,$420,$310,$210,$100,$000	
+RedRaster   	dc.w $100,$200,$300,$400,$500,$600,$700,$600,$500,$400,$300,$200,$100,$000	
+  dc.w $777
+
+CurtainRasterOffset
+	dc.w 0
+
+CurtainRaster	; About 32 lines
+	; Black
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	; Color
+	dc.w $000
+	dc.w $100
+	dc.w $200
+	dc.w $300
+	dc.w $400
+	dc.w $500
+	dc.w $600
+	dc.w $700
+	dc.w $710
+	dc.w $720
+	dc.w $730
+	dc.w $740
+	dc.w $750
+	dc.w $760
+	dc.w $770
+	dc.w $771
+	dc.w $772
+	dc.w $773
+	dc.w $774
+	dc.w $775
+	dc.w $776
+	dc.w $777
+	dc.w $666
+	dc.w $555
+	dc.w $444
+	dc.w $333
+	dc.w $222
+	dc.w $111
+	; Black
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+	dc.w $000
+
+
 ; MARK: - DATA -
 	SECTION DATA
 
@@ -975,6 +1239,12 @@ PictureSlideShow
 
 PictureTheEnd
 	incbin "export\the_end.bin"
+
+sine_255				; 16 bits, unsigned between 00 and 127
+	incbin "export\sine_255.bin"
+	incbin "export\sine_255.bin"
+	incbin "export\sine_255.bin"
+	incbin "export\sine_255.bin"
 
 
 Music
