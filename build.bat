@@ -25,14 +25,31 @@ md export
 :: http://sun.hasenbraten.de/vasm/release/vasm.html
 ::
 del 0Bitplan.prg 2>NUL
+del final\1Bitplan.prg
 
 :: -quiet 
 bin\vasm.exe -m68000 -Ftos -noesc -no-opt -o 0Bitplan.prg ZeroBitplan.s
 IF ERRORLEVEL 1 GOTO ErrorVasm
 
 copy 0Bitplan.prg D:\_emul_\atari\_mount_\DEFENCEF.RCE\0Bitplan
+::bin\upx-3.91 --ultra-brute 0Bitplan.prg -o final\1Bitplan.prg    :: 36 seconds depacking time!!!!
 
 if exist S:\sommarhack\0Bitplan.prg copy 0Bitplan.prg S:\sommarhack\0Bitplan.prg
+::if exist S:\sommarhack\0Bitplan.prg copy final\1Bitplan.prg S:\sommarhack\1Bitplan.prg
+
+::bin\upx-3.91 -1 0Bitplan.prg -o final\bbdr_1.prg
+::bin\upx-3.91 -2 0Bitplan.prg -o final\bbdr_2.prg
+::bin\upx-3.91 -3 0Bitplan.prg -o final\bbdr_3.prg
+::bin\upx-3.91 -4 0Bitplan.prg -o final\bbdr_4.prg
+::bin\upx-3.91 -5 0Bitplan.prg -o final\bbdr_5.prg
+::bin\upx-3.91 -6 0Bitplan.prg -o final\bbdr_6.prg
+::bin\upx-3.91 -7 0Bitplan.prg -o final\bbdr_7.prg
+::bin\upx-3.91 -8 0Bitplan.prg -o final\bbdr_8.prg
+::bin\upx-3.91 -9 0Bitplan.prg -o final\bbdr_9.prg
+::bin\upx-3.91 -9 0Bitplan.prg -o final\bbdr_9.prg
+::bin\upx-3.91 --brute 0Bitplan.prg -o final\bbdr_brute.prg
+::bin\upx-3.91 --ultra-brute 0Bitplan.prg -o final\bbdr_ultra.prg
+
 
 ::pause
 goto :End

@@ -30,9 +30,9 @@
 ; - Music by someone else
 ;
 
-enable_music  equ 0
+enable_music  equ 1
 
-alignment_marker equ $770     ; $770 Yellow is nice to tweak positions, but sucks when it's visible on screen
+alignment_marker equ $000     ; $770 Yellow is nice to tweak positions, but sucks when it's visible on screen
 
 
 ; MARK: Macros
@@ -356,18 +356,16 @@ DemoTrackPtr		dc.l DemoTrackPartList
 ; MARK: Track List
 ; Number of frames, part
 DemoTrackPartList
-	dc.l 50*2,DisplayRasters,DoNothing
-	dc.l 0
-
 	; Wait a second or so before starting
 	dc.l 50*2,DoNothing,DoNothing
 
+ ifne 1
 	; Display the title scrolling horizontally
 	dc.l 40,DisplayTitleMove,InitTitle
 	dc.l 50*5,DisplayTitleStatic,DoNothing
 	dc.l 40,DisplayTitleMove,DoNothing
 
-	; Display the bouncing bomb #1
+ 	; Display the bouncing bomb #1
 	dc.l 50*5,SurpriseBomb,DoNothing
 
 	; Display the made in 5 days
@@ -375,10 +373,16 @@ DemoTrackPartList
 	dc.l 50*5,DisplayMadeIn5DaysStatic,DoNothing
 	dc.l 40,DisplayMadeIn5DaysMove,DoNothing
 
+	; Start by flat rasters
+	dc.l 50*5,DisplayRasters,InitRasterFlat
+
 	; Display the credits scrolling vertically
 	dc.l 18,DisplayCreditsMove,InitCredits
 	dc.l 50*5,DisplayCreditsStatic,DoNothing
 	dc.l 18,DisplayCreditsMove,DoNothing
+
+	; Slightly bent rasters
+	dc.l 50*5,DisplayRasters,InitRasterMedium
 
 	; Display the Mono Slide scrolling diagonally
 	dc.l 40,DisplayMonoSlideMove,InitMonoSlide
@@ -401,6 +405,9 @@ DemoTrackPartList
 
 	; Display the vertical greetings lists
 	dc.l 486-18,DisplayGreetings,InitGreetings
+  endc	
+	; Display the completely out of wrack rasters	
+	dc.l 50*6,DisplayRasters,InitRasterWild
 
 	; Display the Mind Bender scrolling diagonally
 	dc.l 40,DisplayMindBenderMove,InitMindBender
@@ -409,10 +416,13 @@ DemoTrackPartList
 
 	; Display the Mind Bender effect
 	dc.l 50*10,MindBender,DoNothing
-	
+
+	; Display the completely out of wrack rasters	
+	dc.l 50*10,DisplayRasters,InitRasterCrazy
+
 	; Display the end
 	dc.l 216,DisplayTheEndMove,InitTheEnd
-	dc.l 50*5,DisplayTheEndStatic,DoNothing
+	dc.l 50*3,DisplayTheEndStatic,DoNothing
 	dc.l 216,DisplayTheEndMove,DoNothing
 
 	dc.l -1   ; Back to desktop
@@ -947,20 +957,72 @@ DisplayHighResPicture
 
 ; MARK: Display rasters
 DisplayRasters
-	pause 100 ;+20
+	pause 100+4+2 ;+20
 
 	lea RastersBuffer,a0
 
 	move.w #216-1,d6
 .loop	
 	move.w #alignment_marker,(a6)
+._auto_self_mod	
+	REPT 29
+	move.w 2(a0),(a6)  ; 16/4
+	ENDR
 	move.w (a0)+,(a6)  ; 12/3
-	pause 2+39*3
+
+	pause 3
 	dbra d6,.loop
 	move.w #0,(a6)   ; Final black marker
 
-	; Generate rasters
+	;move.w #$700,$ffff8240.w 
+
+	; Pointer to the sinus table - 16 bits, unsigned between 00 and 127
 	lea sine_255,a6
+
+
+	; Self modifying test
+    move.w HorizonAngle,d0
+	add.w #2,d0
+	and.w #510,d0
+	move.w d0,HorizonAngle
+
+	moveq #0,d1
+	move.w 0(a6,d0),d1   ; 16 bits, unsigned between 00 and 127
+	sub.w #63,d1
+	ext.l d1
+	move.w HorizonAmplitude,d2
+	asl.l d2,d1
+
+	lea ._auto_self_mod+2,a0
+	moveq #0,d0
+	moveq #29-1,d7
+.mod_loop
+	and #$FFFFFFFE,d0
+	move.w d0,(a0)
+	swap d0
+	;add.l #2<<16,d0
+	add.l d1,d0
+	swap d0
+
+	add.w #4,a0
+	dbra d7,.mod_loop
+
+	;move.w #$222,$ffff8240.w 
+
+ ifne 0	
+	lea ._auto_self_mod+2,a0
+	moveq #0,d1
+	moveq #29-1,d0
+.mod_loop
+	move.w d1,(a0)
+	add.w #2,d1
+	add.w #4,a0
+	dbra d0,.mod_loop
+ endc
+
+
+
+	; Generate rasters
 
  ifne 0
 	; Erase raster buffer
@@ -1109,6 +1171,26 @@ DisplayRasters
 	ENDR
 
 	rts
+
+InitRasterFlat
+	move.w #0,HorizonAmplitude
+	rts
+
+InitRasterMedium
+	move.w #9,HorizonAmplitude
+	rts
+
+InitRasterWild
+	move.w #13,HorizonAmplitude
+	rts
+
+InitRasterCrazy
+	move.w #14,HorizonAmplitude
+	rts
+
+HorizonAmplitude		dc.w 9      ; From 0 to 13
+HorizonAngle			dc.w 0
+
 
 RasterPositionAngle
 	dc.w 0
